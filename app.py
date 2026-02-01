@@ -264,7 +264,9 @@ def load_custom_css():
     <style>
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
-    [data-testid="stHeader"] { background-color: rgba(0,0,0,0); }
+    header { visibility: hidden; }
+    [data-testid="stHeader"] { visibility: hidden; }
+    [data-testid="stToolbar"] { visibility: hidden; display: none; }
     [data-testid="stDecoration"] { visibility: hidden; }
     .stAppDeployButton { display: none; }
     </style>
