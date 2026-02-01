@@ -3,6 +3,9 @@ import hashlib
 import pandas as pd
 import numpy as np
 import os
+import json
+import io
+import zipfile
 from datetime import datetime
 
 # Register adapters for numpy types
@@ -211,6 +214,90 @@ def get_all_users():
     df = pd.read_sql_query("SELECT id, username, email, role, balance, created_at, streak_days FROM users", conn)
     conn.close()
     return df
+
+# --- BACKUP & RESTORE ---
+
+def get_db_tables():
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+    tables = [row[0] for row in c.fetchall() if row[0] != 'sqlite_sequence']
+    conn.close()
+    return tables
+
+def export_to_sql():
+    """Generates a SQL dump of the entire database."""
+    conn = get_connection()
+    sql_lines = []
+    
+    for line in conn.iterdump():
+        sql_lines.append(line)
+    
+    conn.close()
+    return "\n".join(sql_lines)
+
+def export_to_csv_zip():
+    """Exports all tables to CSV files compressed in a ZIP."""
+    tables = get_db_tables()
+    conn = get_connection()
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for table in tables:
+            df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
+            csv_data = df.to_csv(index=False)
+            zf.writestr(f"{table}.csv", csv_data)
+            
+    conn.close()
+    zip_buffer.seek(0)
+    return zip_buffer
+
+def export_to_json_zip():
+    """Exports all tables to JSON files compressed in a ZIP."""
+    tables = get_db_tables()
+    conn = get_connection()
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for table in tables:
+            df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
+            json_data = df.to_json(orient='records', indent=2)
+            zf.writestr(f"{table}.json", json_data)
+            
+    conn.close()
+    zip_buffer.seek(0)
+    return zip_buffer
+
+def get_db_file_bytes():
+    """Reads the raw .db file bytes safely."""
+    with open(DB_NAME, 'rb') as f:
+        return f.read()
+
+def restore_from_db_file(file_bytes):
+    """Restores the database from a raw .db file."""
+    try:
+        # Validate SQLite header
+        header = file_bytes[:16]
+        if header != b'SQLite format 3\x00':
+            return False, "Arquivo inválido. Não é um banco de dados SQLite."
+            
+        with open(DB_NAME, 'wb') as f:
+            f.write(file_bytes)
+        return True, "Banco de dados restaurado com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao restaurar: {str(e)}"
+
+def restore_from_sql(sql_script):
+    """Restores the database from a SQL dump."""
+    try:
+        conn = get_connection()
+        c = conn.cursor()
+        c.executescript(sql_script)
+        conn.commit()
+        conn.close()
+        return True, "SQL executado com sucesso!"
+    except Exception as e:
+        return False, f"Erro ao executar SQL: {str(e)}"
 
 def get_user_by_email(email):
     """
