@@ -10,8 +10,6 @@ from fpdf import FPDF
 from datetime import datetime
 import pytz
 
-import database_backup as db_backup
-
 # --- CONFIGURAÇÃO DA PÁGINA ---
 if 'sidebar_state' not in st.session_state:
     st.session_state.sidebar_state = 'expanded'
@@ -1053,7 +1051,7 @@ def admin_dashboard():
                 st.markdown("##### 📦 Backup Completo (.db)")
                 st.caption("Cópia binária exata do banco de dados SQLite atual.")
                 
-                db_bytes = db_backup.get_db_file_bytes()
+                db_bytes = db.get_db_file_bytes()
                 st.download_button(
                     label="⬇️ BAIXAR BACKUP COMPLETO",
                     data=db_bytes,
@@ -1069,7 +1067,7 @@ def admin_dashboard():
                 st.caption("Script SQL contendo estrutura e dados para recriação.")
                 
                 if st.button("GERAR DUMP SQL", use_container_width=True):
-                    sql_dump = db_backup.export_to_sql()
+                    sql_dump = db.export_to_sql()
                     st.download_button(
                         label="⬇️ DOWNLOAD SQL",
                         data=sql_dump,
@@ -1086,7 +1084,7 @@ def admin_dashboard():
                 
                 col_fmt1, col_fmt2 = st.columns(2)
                 if col_fmt1.button("ZIP (CSV)", use_container_width=True):
-                    zip_csv = db_backup.export_to_csv_zip()
+                    zip_csv = db.export_to_csv_zip()
                     st.download_button(
                         label="⬇️ DOWNLOAD CSVs",
                         data=zip_csv,
@@ -1096,7 +1094,7 @@ def admin_dashboard():
                     )
                     
                 if col_fmt2.button("ZIP (JSON)", use_container_width=True):
-                    zip_json = db_backup.export_to_json_zip()
+                    zip_json = db.export_to_json_zip()
                     st.download_button(
                         label="⬇️ DOWNLOAD JSONs",
                         data=zip_json,
@@ -1127,11 +1125,11 @@ def admin_dashboard():
                                 
                                 try:
                                     if restore_type == "Arquivo de Banco (.db)":
-                                        success, msg = db_backup.restore_from_db_file(uploaded_file.getvalue())
+                                        success, msg = db.restore_from_db_file(uploaded_file.getvalue())
                                     else:
                                         # SQL Script
                                         string_data = uploaded_file.getvalue().decode("utf-8")
-                                        success, msg = db_backup.restore_from_sql(string_data)
+                                        success, msg = db.restore_from_sql(string_data)
                                     
                                     if success:
                                         # Log Action
