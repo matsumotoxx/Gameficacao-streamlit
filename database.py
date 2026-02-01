@@ -174,6 +174,17 @@ def init_db():
     except sqlite3.OperationalError:
         c.execute("ALTER TABLE store_items ADD COLUMN is_active BOOLEAN DEFAULT 1")
 
+    # Report Schedules Table (NEW)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS report_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            report_type TEXT NOT NULL, -- 'users', 'missions', 'financial'
+            frequency TEXT NOT NULL, -- 'Daily', 'Weekly', 'Monthly'
+            email TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     # Create default admin if not exists
     try:
         c.execute("INSERT INTO users (username, email, password, role, balance) VALUES (?, ?, ?, ?, ?)",
@@ -214,6 +225,17 @@ def get_all_users():
     df = pd.read_sql_query("SELECT id, username, email, role, balance, created_at, streak_days FROM users", conn)
     conn.close()
     return df
+
+def log_audit_action(admin_id, action, target_id=None, details=None):
+    """
+    Logs an administrative action to the audit_logs table.
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("INSERT INTO audit_logs (admin_id, action, target_id, details) VALUES (?, ?, ?, ?)",
+              (admin_id, action, target_id, details))
+    conn.commit()
+    conn.close()
 
 # --- BACKUP & RESTORE ---
 
@@ -561,7 +583,7 @@ def process_mission_validation(player_mission_id, action, justification, admin_i
         add_notification(user_id, f"PARABÉNS! Missão '{title}' APROVADA! {justification}")
         
         # Log Audit for Approval
-        log_audit(admin_id, 'APPROVE_MISSION', user_id, f"Aprovou missão '{title}'. Obs: {justification}")
+        log_audit_action(admin_id, 'APPROVE_MISSION', user_id, f"Aprovou missão '{title}'. Obs: {justification}")
         
         return success, msg
 
@@ -569,12 +591,6 @@ def process_mission_validation(player_mission_id, action, justification, admin_i
         c.execute("UPDATE player_missions SET status='rejected' WHERE id=?", (player_mission_id,))
         
         # Add notification
-        # Note: We need add_notification function available. Assuming it is (used in app.py logic, but defined in database?)
-        # Let's check if add_notification is defined. It was called in app.py: db.add_notification
-        # It must be defined in database.py.
-        # I will verify add_notification existence in next step or assume it exists.
-        # I'll implement it inline if needed or call it.
-        # But wait, I'm inside database.py. I can just insert into notifications table.
         c.execute("INSERT INTO notifications (user_id, message) VALUES (?, ?)", 
                   (user_id, f"ATENÇÃO: Missão '{title}' REJEITADA. Motivo: {justification}"))
         
@@ -1041,6 +1057,42 @@ def get_store_items(include_inactive=False):
     df = pd.read_sql_query(query, conn)
     conn.close()
     return df
+
+# --- REPORT SCHEDULING ---
+
+def create_report_schedule(report_type, frequency, email=None):
+    """
+    Creates a new report schedule.
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("INSERT INTO report_schedules (report_type, frequency, email) VALUES (?, ?, ?)",
+              (report_type, frequency, email))
+    conn.commit()
+    conn.close()
+    return True
+
+def get_report_schedules():
+    """
+    Retrieves all active report schedules.
+    """
+    conn = get_connection()
+    df = pd.read_sql_query("SELECT id, report_type, frequency, email, created_at FROM report_schedules ORDER BY created_at DESC", conn)
+    conn.close()
+    return df
+
+def delete_report_schedule(schedule_id):
+    """
+    Deletes a report schedule.
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("DELETE FROM report_schedules WHERE id = ?", (schedule_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+# --- PURCHASE REQUESTS ---
 
 def request_purchase(user_id, item_id):
     conn = get_connection()
