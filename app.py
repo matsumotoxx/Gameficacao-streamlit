@@ -1051,14 +1051,20 @@ def admin_dashboard():
                 st.markdown("##### 📦 Backup Completo (.db)")
                 st.caption("Cópia binária exata do banco de dados SQLite atual.")
                 
-                db_bytes = db.get_db_file_bytes()
-                st.download_button(
-                    label="⬇️ BAIXAR BACKUP COMPLETO",
-                    data=db_bytes,
-                    file_name=f"petro_arena_full_{datetime.now().strftime('%Y%m%d_%H%M')}.db",
-                    mime="application/x-sqlite3",
-                    use_container_width=True
-                )
+                try:
+                    if hasattr(db, 'get_db_file_bytes'):
+                        db_bytes = db.get_db_file_bytes()
+                        st.download_button(
+                            label="⬇️ BAIXAR BACKUP COMPLETO",
+                            data=db_bytes,
+                            file_name=f"petro_arena_full_{datetime.now().strftime('%Y%m%d_%H%M')}.db",
+                            mime="application/x-sqlite3",
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("Função de backup aguardando atualização do sistema. Tente recarregar.")
+                except Exception as e:
+                    st.error(f"Erro ao gerar backup: {e}")
                 
                 st.markdown("---")
                 
@@ -1067,14 +1073,20 @@ def admin_dashboard():
                 st.caption("Script SQL contendo estrutura e dados para recriação.")
                 
                 if st.button("GERAR DUMP SQL", use_container_width=True):
-                    sql_dump = db.export_to_sql()
-                    st.download_button(
-                        label="⬇️ DOWNLOAD SQL",
-                        data=sql_dump,
-                        file_name=f"petro_arena_dump_{datetime.now().strftime('%Y%m%d_%H%M')}.sql",
-                        mime="text/plain",
-                        use_container_width=True
-                    )
+                    try:
+                        if hasattr(db, 'export_to_sql'):
+                            sql_dump = db.export_to_sql()
+                            st.download_button(
+                                label="⬇️ DOWNLOAD SQL",
+                                data=sql_dump,
+                                file_name=f"petro_arena_dump_{datetime.now().strftime('%Y%m%d_%H%M')}.sql",
+                                mime="text/plain",
+                                use_container_width=True
+                            )
+                        else:
+                            st.warning("Função de exportação SQL indisponível.")
+                    except Exception as e:
+                        st.error(f"Erro ao exportar SQL: {e}")
                 
                 st.markdown("---")
                 
@@ -1084,24 +1096,36 @@ def admin_dashboard():
                 
                 col_fmt1, col_fmt2 = st.columns(2)
                 if col_fmt1.button("ZIP (CSV)", use_container_width=True):
-                    zip_csv = db.export_to_csv_zip()
-                    st.download_button(
-                        label="⬇️ DOWNLOAD CSVs",
-                        data=zip_csv,
-                        file_name=f"petro_arena_data_csv_{datetime.now().strftime('%Y%m%d_%H%M')}.zip",
-                        mime="application/zip",
-                        use_container_width=True
-                    )
+                    try:
+                        if hasattr(db, 'export_to_csv_zip'):
+                            zip_csv = db.export_to_csv_zip()
+                            st.download_button(
+                                label="⬇️ DOWNLOAD CSVs",
+                                data=zip_csv,
+                                file_name=f"petro_arena_data_csv_{datetime.now().strftime('%Y%m%d_%H%M')}.zip",
+                                mime="application/zip",
+                                use_container_width=True
+                            )
+                        else:
+                            st.warning("Função de exportação CSV indisponível.")
+                    except Exception as e:
+                        st.error(f"Erro ao exportar CSV: {e}")
                     
                 if col_fmt2.button("ZIP (JSON)", use_container_width=True):
-                    zip_json = db.export_to_json_zip()
-                    st.download_button(
-                        label="⬇️ DOWNLOAD JSONs",
-                        data=zip_json,
-                        file_name=f"petro_arena_data_json_{datetime.now().strftime('%Y%m%d_%H%M')}.zip",
-                        mime="application/zip",
-                        use_container_width=True
-                    )
+                    try:
+                        if hasattr(db, 'export_to_json_zip'):
+                            zip_json = db.export_to_json_zip()
+                            st.download_button(
+                                label="⬇️ DOWNLOAD JSONs",
+                                data=zip_json,
+                                file_name=f"petro_arena_data_json_{datetime.now().strftime('%Y%m%d_%H%M')}.zip",
+                                mime="application/zip",
+                                use_container_width=True
+                            )
+                        else:
+                            st.warning("Função de exportação JSON indisponível.")
+                    except Exception as e:
+                        st.error(f"Erro ao exportar JSON: {e}")
 
         # --- IMPORT SECTION ---
         with c_import:
