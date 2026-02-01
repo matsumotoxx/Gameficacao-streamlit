@@ -1170,12 +1170,58 @@ def admin_dashboard():
                                 except Exception as e:
                                     st.error(f"Erro crítico na restauração: {e}")
         
-        # --- SCHEDULER MOCK ---
+        # --- REPORT SCHEDULING (NEW) ---
+        st.markdown("---")
+        with st.expander("⏱️ AGENDAMENTO DE RELATÓRIOS AUTOMÁTICOS"):
+            st.caption("Receba relatórios periódicos por e-mail (simulação).")
+            
+            c_sch1, c_sch2, c_sch3 = st.columns([2, 1, 1])
+            
+            with c_sch1:
+                sch_type = st.selectbox("Tipo de Relatório", ["Relatório de Usuários", "Relatório de Missões", "Relatório Financeiro"])
+                sch_freq = st.selectbox("Frequência", ["Diário (00:00)", "Semanal (Domingo)", "Mensal (Dia 1)"])
+                sch_email = st.text_input("Email para envio (Opcional)")
+                
+                if st.button("➕ CRIAR AGENDAMENTO"):
+                    try:
+                        if hasattr(db, 'create_report_schedule'):
+                            db.create_report_schedule(sch_type, sch_freq, sch_email)
+                            st.success(f"Agendamento criado: {sch_type} - {sch_freq}")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.warning("Funcionalidade de agendamento indisponível.")
+                    except Exception as e:
+                        st.error(f"Erro ao criar agendamento: {e}")
+
+            # List Active Schedules
+            st.markdown("##### 📅 Agendamentos Ativos")
+            try:
+                if hasattr(db, 'get_report_schedules'):
+                    schedules_df = db.get_report_schedules()
+                    
+                    if not schedules_df.empty:
+                        for _, row in schedules_df.iterrows():
+                            c_row1, c_row2 = st.columns([4, 1])
+                            with c_row1:
+                                st.info(f"**{row['report_type']}** | {row['frequency']} | 📧 {row['email'] if row['email'] else 'N/A'}")
+                            with c_row2:
+                                if st.button("❌", key=f"del_sch_{row['id']}", help="Remover agendamento"):
+                                    db.delete_report_schedule(row['id'])
+                                    st.rerun()
+                    else:
+                        st.caption("Nenhum agendamento ativo.")
+                else:
+                    st.caption("Carregando agendamentos...")
+            except Exception as e:
+                st.error(f"Erro ao carregar agendamentos: {e}")
+
+        # --- BACKUP SCHEDULER MOCK ---
         st.markdown("---")
         with st.expander("⏱️ AGENDAMENTO DE BACKUP AUTOMÁTICO"):
             c_sch1, c_sch2, c_sch3 = st.columns([2, 1, 1])
-            freq = c_sch1.selectbox("Frequência", ["Diário (00:00)", "Semanal (Domingo)", "Mensal (Dia 1)"])
-            email = c_sch1.text_input("Email para envio de notificação (Opcional)")
+            freq = c_sch1.selectbox("Frequência Backup", ["Diário (00:00)", "Semanal (Domingo)", "Mensal (Dia 1)"])
+            email = c_sch1.text_input("Email para notificação (Opcional)")
             
             status_ph = c_sch3.empty()
             if 'backup_schedule' not in st.session_state:
